@@ -1,4 +1,4 @@
-# ageing-in-place-hack
+# Ageing-in-Place-Hack
 
 21-22 October, 2022. I2N Hub Honeysuckle
 
