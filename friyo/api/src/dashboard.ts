@@ -24,7 +24,7 @@ type Schedule = {
 type Patient = {
     id: number
     name: string
-    medication?: Medication
+    medication: string
     schedule: Schedule[]
     prescriptionCount?: number
     tracking: TrackingRecord[]
@@ -46,16 +46,21 @@ export const Dashboard = (app: Express) => {
         {
             id: count++,
             name: "Mr. Elder One",
-            schedule: [],
+            schedule: [{
+                id: 0,
+                frequency: 2,
+                intakeTime: '14:59',
+                isNotified: false
+            }],
             tracking: [],
-            medication: { count: 20, name: 'Panadol'} as Medication,
+            medication: 'Panadol'
         },
         {
             id: count++,
             name: "Mrs. Elder Two",
             schedule: [],
             tracking: [],
-            medication: { count: 20, name: 'Red Pill'} as Medication,
+            medication: 'Red Pill'
         }
 
     ];
@@ -87,7 +92,8 @@ export const Dashboard = (app: Express) => {
             id: count++,
             name: body.name,
             schedule: [],
-            tracking: []
+            tracking: [],
+            medication: body.medication
         };
         patientData.push(newPatient);
 
@@ -130,11 +136,46 @@ export const Dashboard = (app: Express) => {
         });
     });
 
+    app.post('/dashboard/patients/:patientId/dispense/:trackId', (req: Request, res: Response) => {
+        const patientId = parseInt(req.params["patientId"]);
+        const trackId = parseInt(req.params['trackId']);
+
+        const patient = patientData.find( patient => patient.id === patientId);
+        const tracker = patient?.tracking.find(tracker => tracker.id === trackId);
+        if (patient) {
+            if (tracker) {
+                const now = DateTime.now();
+                tracker.takenAt = now.toISO();
+
+                const sched = patient.schedule.find(sched => sched.id === tracker.scheduleId);
+                if (sched) {
+                    tracker.status = timeToIso(sched.intakeTime).diff(now, ['minutes']).as('minutes') > 30 ? 'Late' : 'In Time'
+                }
+            }
+        }
+
+        return res.json({
+            status: 'success',
+            data: {}
+        })
+    });
+
+}
+
+const timeToIso = (intakeTime: string) => {
+    const timeNow = DateTime.now();
+    const year = timeNow.year;
+    const month = timeNow.month;
+    const second = timeNow.second;
+    const millis = timeNow.millisecond;
+    const day = timeNow.day;
+    const hour = parseInt(intakeTime.split(':')[0]);
+    const minute = parseInt(intakeTime.split(':')[1]);
+    return DateTime.local(year, month, day, hour, minute, 0, 0);
 }
 
 const startScheduler = (patientData: Patient[]) => {
     setInterval( () => {
-        const timeNow = DateTime.now();
 
         // set notified to true
         patientData.map( patient => {
@@ -142,8 +183,23 @@ const startScheduler = (patientData: Patient[]) => {
                 .filter( trackRecord => trackRecord.status !== 'Pending')
                 .map( trackRecord => {
                     const schedule = patient.schedule.find( sched => sched.id === trackRecord.scheduleId)
-                    if (schedule?.isNotified)
+                    if (schedule?.isNotified) {
                         schedule.isNotified = false;
+                    }
+                })
+        });
+
+        patientData.map( patient => {
+            patient.tracking
+                .filter( trackRecord => trackRecord.status === 'Pending')
+                .map( trackRecord => {
+                    const schedule = patient.schedule.find( sched => sched.id === trackRecord.scheduleId)
+                    if (schedule) {
+                        const intakeTime = timeToIso(schedule.intakeTime);
+                        if (intakeTime.diffNow().as('minutes') > 5) {
+                            trackRecord.status = 'Missed';
+                        }
+                    }
                 })
         });
 
@@ -151,11 +207,25 @@ const startScheduler = (patientData: Patient[]) => {
         patientData.map( patient => {
             // check if patient's sched is reached and not yet notified
             //     if patient's sched is reached, add a track record
-            patient.schedule.map (sched => {
+            patient.schedule
+                .filter(sched => !sched.isNotified)
+                .map(sched => {
+                    const intakeTime = timeToIso(sched.intakeTime);
+                    if (intakeTime.diffNow().as('minutes') < 20) {
+                        patient.tracking = [...patient.tracking, {
+                            id: patient.tracking.length++,
+                            medicationName: patient.medication,
+                            scheduleId: sched.id,
+                            status: 'Pending',
+                            takenAt: ''
+                        }];
+                        sched.isNotified = true;
+                    }
 
-            })
+                })
         })
 
-
-    }, 500);
+        console.log('\n');
+        console.log(JSON.stringify(patientData));
+    }, 1000);
 }
