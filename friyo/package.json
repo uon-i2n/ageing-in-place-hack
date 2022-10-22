@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/luxon": "^3.0.2",
+    "cors": "^2.8.5",
+    "luxon": "^3.0.4"
+  }
+}
