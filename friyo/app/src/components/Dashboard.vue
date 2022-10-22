@@ -3,29 +3,24 @@ import { DateTime } from "luxon";
 import RecordAddNew from "./RecordAddNew.vue";
 import RecordView from "./RecordView.vue";
 
-const data = [
-  {
-    name: "John",
-    medication: "Panadol",
-    taken_at: DateTime.now(),
-    next_at: DateTime.now(),
-    status: "On time",
-  },
-  {
-    name: "Lucifer",
-    medication: "Panadol",
-    taken_at: DateTime.now(),
-    next_at: DateTime.now(),
-    status: "Missed",
-  },
-  {
-    name: "John",
-    medication: "Panadol",
-    taken_at: DateTime.now(),
-    next_at: DateTime.now(),
-    status: "Late",
-  },
-];
+import axios from "axios";
+import { ref } from "vue";
+
+const data: any = ref([]);
+
+const appendRecord = (val: any) => {
+  data.value.push(val);
+};
+
+axios
+  .get("http://localhost:8000/dashboard/patients", {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+  .then((resp) => {
+    data.value = resp.data.data;
+  });
 </script>
 
 <template>
@@ -39,27 +34,28 @@ const data = [
     <div class="container my-3">
       <nav class="navbar mb-3">
         <span class="navbar-brand">Your patients</span>
-        <RecordAddNew />
+        <RecordAddNew @saved="appendRecord" />
       </nav>
       <table class="table table-striped">
         <thead>
           <tr class="bg-dark text-white">
             <th scope="col">#</th>
+            <th scope="col">ID</th>
             <th scope="col">Name</th>
             <th scope="col">Medication</th>
-            <th scope="col">Taken at</th>
-            <th scope="col">Next at</th>
+            <th scope="col">Last Taken at</th>
             <th scope="col">Status</th>
+            <th scope="col">Pill Count</th>
             <th scope="col"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(val, i) in data" :key="i">
             <td scope="col">{{ i + 1 }}</td>
+            <td>{{ val.id }}</td>
             <td>{{ val.name }}</td>
             <td>{{ val.medication }}</td>
             <td>{{ val.taken_at }}</td>
-            <td>{{ val.next_at }}</td>
             <td>
               <span
                 :class="{
@@ -70,8 +66,9 @@ const data = [
                 >{{ val.status }}</span
               >
             </td>
+            <td>25/50</td>
             <td class="text-end">
-              <RecordView :id="i" />
+              <RecordView :id="i" :data="val" />
             </td>
           </tr>
         </tbody>

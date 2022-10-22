@@ -1,13 +1,41 @@
 <script lang="ts" setup>
+import axios from "axios";
+import { reactive, ref } from "vue";
+
 interface IProps {
   id: number;
-  //data: any;
+  data: any;
 }
 
-withDefaults(defineProps<IProps>(), {
+const props = withDefaults(defineProps<IProps>(), {
   id: 0,
-  //data: {},
+  data: {},
 });
+
+const frequency = ref(0);
+const time = ref("");
+
+const propsData = reactive(props.data);
+
+const addSchedule = () => {
+  axios
+    .post(
+      `http://localhost:8000/dashboard/patients/${propsData.id}/schedules`,
+      {
+        frequency: frequency.value,
+        intakeTime: time.value,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((resp) => {
+      console.log(resp.data.data);
+      propsData.schedule = [...propsData.schedule, ...resp.data.data];
+    });
+};
 </script>
 
 <template>
@@ -37,31 +65,27 @@ withDefaults(defineProps<IProps>(), {
             <div class="row">
               <div class="col-md-6">
                 <small class="text-uppercase text-muted">Name</small>
-                <p>John</p>
+                <p>{{ propsData.name }}</p>
               </div>
 
               <div class="col-md-6">
                 <small class="text-uppercase text-muted">Date of Birth</small>
-                <p>11/11/1111</p>
+                <p>04/09/1789</p>
               </div>
 
               <div class="col-md-6">
                 <small class="text-uppercase text-muted">Medication</small>
-                <p>Panadol</p>
+                <p>{{ propsData.medication }}</p>
               </div>
               <div class="col-md-6">
-                <small class="text-uppercase text-muted"
-                  >Medication count</small
-                >
-                <p>10/25</p>
+                <small class="text-uppercase text-muted">
+                  Medication count
+                </small>
+                <p>25/50</p>
               </div>
               <div class="col-md-6">
                 <small class="text-uppercase text-muted">Prescription</small>
                 <p>2/5</p>
-              </div>
-              <div class="col-md-6">
-                <small class="text-uppercase text-muted">Name</small>
-                <p>John</p>
               </div>
             </div>
 
@@ -72,14 +96,22 @@ withDefaults(defineProps<IProps>(), {
               <div class="row align-items-end">
                 <div class="col-md-4">
                   <label>Frequency</label>
-                  <input type="number" class="form-control" />
+                  <input
+                    type="number"
+                    class="form-control"
+                    v-model="frequency"
+                  />
                 </div>
                 <div class="col-md-4">
                   <label>Time</label>
-                  <input type="time" class="form-control" />
+                  <input type="time" class="form-control" v-model="time" />
                 </div>
                 <div class="col-md-4">
-                  <button type="button" class="btn btn-outline-primary w-100">
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary w-100"
+                    @click="addSchedule"
+                  >
                     Add
                   </button>
                 </div>
@@ -97,10 +129,10 @@ withDefaults(defineProps<IProps>(), {
                   </thead>
 
                   <tbody>
-                    <tr v-for="i in 10" :key="i">
+                    <tr v-for="(schedule, i) in propsData.schedule" :key="i">
                       <td scope="col">{{ i + 1 }}</td>
-                      <td>1 day</td>
-                      <td>10:00 AM</td>
+                      <td>{{ schedule.frequency }} days</td>
+                      <td>{{ schedule.intakeTime }}</td>
                       <td class="text-end">
                         <button type="button" class="btn text-danger">
                           <BIconTrash />
@@ -120,7 +152,7 @@ withDefaults(defineProps<IProps>(), {
                 <thead>
                   <tr class="bg-dark text-white">
                     <th scope="col">#</th>
-                    <th scope="col">Scheduled Date Time</th>
+                    <th scope="col">Medication name</th>
                     <th scope="col">Taken Date Time</th>
                     <th scope="col">Status</th>
                   </tr>
@@ -128,10 +160,20 @@ withDefaults(defineProps<IProps>(), {
                 <tbody>
                   <tr v-for="i in 10" :key="i">
                     <td scope="col">{{ i + 1 }}</td>
-                    <td>10/10/2022 10:00 AM</td>
-                    <td>10/10/2022 10:00 AM</td>
+                    <td>Panadol</td>
+                    <td>10/10/2022 9:45 AM</td>
                     <td>
-                      <span class="badge bg-success text-white">On time</span>
+                      <span
+                        class="badge bg-warning text-white"
+                        :class="{
+                          'bg-success': i % 2 == 0,
+                          'bg-danger': i % 3 == 0,
+                        }"
+                      >
+                        <span v-if="i % 2 == 0">On Time</span>
+                        <span v-if="i % 3 == 0">Missed</span>
+                        <span v-else>Late</span>
+                      </span>
                     </td>
                   </tr>
                 </tbody>

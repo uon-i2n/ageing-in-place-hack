@@ -1,9 +1,42 @@
 <script lang="ts" setup>
+import axios from "axios";
+import { DateTime } from "luxon";
 import { ref } from "vue";
+import { useModal } from "../composables/useModal";
 
 const name = ref("");
 const medication = ref("");
 const volume = ref(25);
+
+const emit = defineEmits(["saved"]);
+const { closeModal } = useModal("add-new-modal");
+
+const save = () => {
+  axios
+    .post(
+      "http://localhost:8000/dashboard/patients",
+      {
+        name: name.value,
+        medication: medication.value,
+        volume: volume.value,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((resp) => {
+      emit("saved", {
+        ...resp.data.data,
+        medication: medication.value,
+        status: "On time",
+        taken_at: DateTime.now().toFormat("dd/LL/yyyy mm:HH "),
+      });
+
+      closeModal();
+    });
+};
 </script>
 
 <template>
@@ -55,7 +88,9 @@ const volume = ref(25);
             >
               Close
             </button>
-            <button type="button" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-primary" @click="save">
+              Save
+            </button>
           </div>
         </div>
       </div>
