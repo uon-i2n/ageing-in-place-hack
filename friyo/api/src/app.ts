@@ -1,10 +1,12 @@
 import express, { Express, Request, Response } from 'express';
 import { Dashboard } from './dashboard';
+import cors from 'cors' ;
 
 const app: Express = express(); 
 
 // Middleware
 app.use(express.json());
+app.use(cors())
 
 Dashboard(app);
 

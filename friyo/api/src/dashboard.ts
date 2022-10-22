@@ -1,5 +1,5 @@
 import { Express, Request, Response } from 'express';
-import { Job, scheduleJob } from 'node-schedule';
+import { DateTime } from 'luxon';
 
 type Medication = {
     name: string
@@ -18,6 +18,7 @@ type Schedule = {
     id: number
     intakeTime: string
     frequency: number
+    isNotified: boolean
 }
 
 type Patient = {
@@ -26,7 +27,16 @@ type Patient = {
     medication?: Medication
     schedule: Schedule[]
     prescriptionCount?: number
+    tracking: TrackingRecord[]
 }
+
+type TrackingRecord = {
+    id: number,
+    scheduleId: number  // to reset the schedule back to false
+    status: string  // Missed, Late, OnTime, Pending
+    takenAt: string // DateTime
+    medicationName: string
+};
 
 
 export const Dashboard = (app: Express) => {
@@ -36,16 +46,22 @@ export const Dashboard = (app: Express) => {
         {
             id: count++,
             name: "Mr. Elder One",
-            schedule: []
-
+            schedule: [],
+            tracking: [],
+            medication: { count: 20, name: 'Panadol'} as Medication,
         },
         {
             id: count++,
             name: "Mrs. Elder Two",
-            schedule: []
+            schedule: [],
+            tracking: [],
+            medication: { count: 20, name: 'Red Pill'} as Medication,
         }
 
     ];
+
+    // start the timer
+    startScheduler(patientData);
 
     app.get('/dashboard/patients', (req: Request, res: Response) => {
         return res.json({
@@ -70,7 +86,8 @@ export const Dashboard = (app: Express) => {
         const newPatient: Patient = {
             id: count++,
             name: body.name,
-            schedule: []
+            schedule: [],
+            tracking: []
         };
         patientData.push(newPatient);
 
@@ -98,15 +115,15 @@ export const Dashboard = (app: Express) => {
         const patient = patientData
             .filter( p => p.id === patientId)
             .map( patient => {
-                patient.schedule.push({
+                const scheds = patient.schedule;
+                patient.schedule = [...scheds, {
                     id: patient.schedule.length++,
                     frequency: parseInt(schedData['frequency']),
-                    intakeTime: schedData['intakeTime']
-                });
+                    intakeTime: schedData['intakeTime'],
+                    isNotified: false
+                }]
                 return patient;
             });
-
-        // console.log(JSON.stringify(patientData));
         return res.json({
             status: 'success',
             data: patient[0].schedule
@@ -115,23 +132,30 @@ export const Dashboard = (app: Express) => {
 
 }
 
-// const startScheduler = (patientData: Patient[]) => {
-//     setInterval( () => {
-//         console.log('running scheduler');
-// 
-//         const schedule = [
-//             {
-//             }
-//         ]
-// 
-//         /**
-//          * 
-//          * if dateDiff(timeNow(), time + offset) <= 0 then add a trackingRecord
-//          * 
-//          */
-// 
-//         // loop for each patient data
-//         // check
-// 
-//     }, 500);
-// }
+const startScheduler = (patientData: Patient[]) => {
+    setInterval( () => {
+        const timeNow = DateTime.now();
+
+        // set notified to true
+        patientData.map( patient => {
+            patient.tracking
+                .filter( trackRecord => trackRecord.status !== 'Pending')
+                .map( trackRecord => {
+                    const schedule = patient.schedule.find( sched => sched.id === trackRecord.scheduleId)
+                    if (schedule?.isNotified)
+                        schedule.isNotified = false;
+                })
+        });
+
+        // adding of tracking record
+        patientData.map( patient => {
+            // check if patient's sched is reached and not yet notified
+            //     if patient's sched is reached, add a track record
+            patient.schedule.map (sched => {
+
+            })
+        })
+
+
+    }, 500);
+}
